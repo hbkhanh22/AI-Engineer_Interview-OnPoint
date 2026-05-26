@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Contract Hub – AI-Powered Contract Management</title>
+  <meta name="description" content="Hệ thống quản lý và truy vấn hợp đồng số thông minh sử dụng AI. Số hóa, tìm kiếm và hỏi đáp hợp đồng với độ chính xác cao.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Ambient Background -->
+  <div class="ambient">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <i class="fa-solid fa-file-contract"></i>
+      <span>ContractHub</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active" id="nav-dashboard" onclick="showView('dashboard')">
+        <i class="fa-solid fa-gauge-high"></i>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item" id="nav-upload" onclick="showView('upload')">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        <span>Tải lên Hợp đồng</span>
+      </a>
+      <a class="nav-item" id="nav-chat" onclick="showView('chat')">
+        <i class="fa-solid fa-comments"></i>
+        <span>Hỏi đáp AI</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="api-key-box">
+        <label><i class="fa-solid fa-key"></i> Gemini API Key</label>
+        <input type="password" id="globalApiKey" placeholder="AIzaSy..." autocomplete="off">
+        <div class="key-hint">Lấy key miễn phí tại <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content">
+
+    <!-- ── DASHBOARD VIEW ── -->
+    <section id="view-dashboard" class="view active">
+      <div class="page-header">
+        <div>
+          <h1>Dashboard Hợp đồng</h1>
+          <p class="subtitle">Tổng quan toàn bộ danh mục hợp đồng</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" onclick="showView('upload')">
+            <i class="fa-solid fa-plus"></i> Thêm hợp đồng
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(99,102,241,.15); color:#818cf8">
+            <i class="fa-solid fa-file-lines"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="statTotal">-</div>
+            <div class="stat-label">Tổng hợp đồng</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(16,185,129,.15); color:#10b981">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="statActive">-</div>
+            <div class="stat-label">Đang hiệu lực</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(245,158,11,.15); color:#f59e0b">
+            <i class="fa-solid fa-clock"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="statExpiringSoon">-</div>
+            <div class="stat-label">Sắp hết hạn (90 ngày)</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(239,68,68,.15); color:#ef4444">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="statExpired">-</div>
+            <div class="stat-label">Đã hết hạn</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchInput" placeholder="Tìm theo tên, bên ký kết, loại hợp đồng..." oninput="debounceSearch()">
+        </div>
+        <select id="statusFilter" onchange="loadContracts()">
+          <option value="all">Tất cả trạng thái</option>
+          <option value="Active">Đang hiệu lực</option>
+          <option value="Expired">Đã hết hạn</option>
+          <option value="Terminated">Đã chấm dứt</option>
+        </select>
+      </div>
+
+      <!-- Contracts Table -->
+      <div class="glass-card table-card">
+        <div class="table-wrapper" id="contractTableWrapper">
+          <div class="loading-state" id="tableLoading">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span>Đang tải...</span>
+          </div>
+          <table class="contracts-table" id="contractsTable" style="display:none">
+            <thead>
+              <tr>
+                <th>Tên tài liệu</th>
+                <th>Bên A</th>
+                <th>Bên B</th>
+                <th>Loại</th>
+                <th>Giá trị</th>
+                <th>Ngày hết hạn</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="contractsBody"></tbody>
+          </table>
+          <div class="empty-state" id="emptyState" style="display:none">
+            <i class="fa-solid fa-folder-open"></i>
+            <p>Chưa có hợp đồng nào. <button class="link-btn" onclick="showView('upload')">Tải lên hợp đồng đầu tiên</button></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── UPLOAD VIEW ── -->
+    <section id="view-upload" class="view">
+      <div class="page-header">
+        <div>
+          <h1>Tải lên Hợp đồng</h1>
+          <p class="subtitle">Hệ thống AI sẽ tự động trích xuất thông tin</p>
+        </div>
+      </div>
+
+      <div class="upload-layout">
+        <!-- Drop Zone -->
+        <div class="glass-card upload-card">
+          <div class="drop-zone" id="dropZone"
+               ondragover="handleDragOver(event)"
+               ondragleave="handleDragLeave(event)"
+               ondrop="handleDrop(event)"
+               onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none" onchange="handleFileSelect(event)">
+            <div class="drop-icon">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <h3>Kéo thả file vào đây</h3>
+            <p>hoặc nhấn để chọn file</p>
+            <div class="supported-formats">
+              <span>PDF</span><span>PNG</span><span>JPG</span><span>WEBP</span>
+            </div>
+          </div>
+
+          <!-- Selected File Preview -->
+          <div class="selected-file" id="selectedFile" style="display:none">
+            <i class="fa-solid fa-file-pdf" id="selectedFileIcon"></i>
+            <div class="file-details">
+              <div class="file-name" id="selectedFileName">-</div>
+              <div class="file-size" id="selectedFileSize">-</div>
+            </div>
+            <button class="btn-icon" onclick="clearFile()" title="Xóa">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <button class="btn btn-primary btn-full" id="uploadBtn" onclick="uploadContract()" disabled>
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            Phân tích & Số hóa Hợp đồng
+          </button>
+        </div>
+
+        <!-- Processing Status / Result -->
+        <div class="glass-card result-card" id="uploadResult" style="display:none">
+          <div id="processingState">
+            <div class="processing-anim">
+              <div class="proc-ring"></div>
+              <i class="fa-solid fa-brain"></i>
+            </div>
+            <h3>Gemini AI đang phân tích...</h3>
+            <div class="proc-steps">
+              <div class="proc-step active" id="step1"><i class="fa-solid fa-upload"></i> Tải file</div>
+              <div class="proc-step" id="step2"><i class="fa-solid fa-eye"></i> OCR & Đọc văn bản</div>
+              <div class="proc-step" id="step3"><i class="fa-solid fa-tags"></i> Trích xuất dữ liệu</div>
+              <div class="proc-step" id="step4"><i class="fa-solid fa-database"></i> Lưu & Lập chỉ mục</div>
+            </div>
+          </div>
+          <div id="successState" style="display:none">
+            <div class="success-icon"><i class="fa-solid fa-circle-check"></i></div>
+            <h3>Số hóa thành công!</h3>
+            <div class="extracted-summary" id="extractedSummary"></div>
+            <div class="result-actions">
+              <button class="btn btn-secondary" onclick="showView('dashboard')">
+                <i class="fa-solid fa-gauge-high"></i> Về Dashboard
+              </button>
+              <button class="btn btn-primary" id="viewDetailBtn">
+                <i class="fa-solid fa-eye"></i> Xem chi tiết
+              </button>
+            </div>
+          </div>
+          <div id="errorState" style="display:none">
+            <div class="error-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+            <h3>Đã xảy ra lỗi</h3>
+            <p id="errorMsg"></p>
+            <button class="btn btn-secondary" onclick="resetUpload()">Thử lại</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHAT VIEW ── -->
+    <section id="view-chat" class="view">
+      <div class="page-header">
+        <div>
+          <h1>Hỏi đáp Hợp đồng AI</h1>
+          <p class="subtitle">Đặt câu hỏi bằng ngôn ngữ tự nhiên – AI sẽ trả lời kèm trích dẫn nguồn</p>
+        </div>
+      </div>
+
+      <div class="chat-layout">
+        <!-- Chat Panel -->
+        <div class="glass-card chat-panel">
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-welcome">
+              <div class="welcome-icon"><i class="fa-solid fa-robot"></i></div>
+              <h3>Contract AI Assistant</h3>
+              <p>Tôi có thể giúp bạn tìm kiếm thông tin từ tất cả hợp đồng đã được số hóa. Hãy thử hỏi:</p>
+              <div class="sample-questions">
+                <button class="sample-q" onclick="askSample(this)">Hợp đồng nào sắp hết hạn trong 90 ngày tới?</button>
+                <button class="sample-q" onclick="askSample(this)">Điều khoản phạt trong các hợp đồng dịch vụ là gì?</button>
+                <button class="sample-q" onclick="askSample(this)">Tổng giá trị các hợp đồng đang hiệu lực?</button>
+                <button class="sample-q" onclick="askSample(this)">Điều kiện chấm dứt hợp đồng cần báo trước bao nhiêu ngày?</button>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <div class="scope-selector">
+              <label>Phạm vi tìm kiếm:</label>
+              <select id="chatScope">
+                <option value="all">Tất cả hợp đồng</option>
+              </select>
+            </div>
+            <div class="chat-input-row">
+              <textarea id="chatInput" placeholder="Nhập câu hỏi của bạn..." rows="2"
+                        onkeydown="handleChatKey(event)"></textarea>
+              <button class="btn-send" id="sendBtn" onclick="sendChat()">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PDF Viewer Panel -->
+        <div class="glass-card pdf-panel" id="pdfPanel">
+          <div class="pdf-panel-header">
+            <span id="pdfPanelTitle">Xem tài liệu</span>
+            <button class="btn-icon" onclick="closePdfPanel()">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="pdf-empty" id="pdfEmpty">
+            <i class="fa-solid fa-file-pdf"></i>
+            <p>Nhấp vào trích dẫn nguồn để xem tài liệu gốc tại đây</p>
+          </div>
+          <iframe id="pdfViewer" src="" style="display:none"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CONTRACT DETAIL MODAL ── -->
+    <div class="modal-overlay" id="detailModal" style="display:none" onclick="closeModal(event)">
+      <div class="modal-content" id="detailModalContent">
+        <div class="modal-header">
+          <h2 id="modalTitle">Chi tiết Hợp đồng</h2>
+          <button class="btn-icon" onclick="closeDetailModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

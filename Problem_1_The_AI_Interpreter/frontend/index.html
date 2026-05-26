@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interpreter - Real-Time Translation</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(30, 41, 59, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-hover: rgba(255, 255, 255, 0.12);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-primary: #6366f1; /* Indigo */
+            --accent-glow: rgba(99, 102, 241, 0.35);
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --font-family: 'Plus Jakarta Sans', sans-serif;
+            --font-display: 'Outfit', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Glow Background Blobs */
+        .ambient-glow {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--accent-glow) 0%, rgba(99, 102, 241, 0) 70%);
+            z-index: -1;
+            filter: blur(40px);
+            opacity: 0.6;
+        }
+
+        .glow-1 {
+            top: -10%;
+            left: -10%;
+        }
+
+        .glow-2 {
+            bottom: -10%;
+            right: -10%;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1200px;
+            padding: 2rem 1.5rem 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: var(--font-display);
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo i {
+            color: #818cf8;
+            -webkit-text-fill-color: initial;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-secondary);
+        }
+
+        .status-dot.connected {
+            background-color: var(--success-color);
+            box-shadow: 0 0 10px var(--success-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.6; }
+        }
+
+        main {
+            width: 100%;
+            max-width: 1200px;
+            flex-grow: 1;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Glassmorphic Panel Layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr 3fr;
+            }
+        }
+
+        .control-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 1.75rem;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            height: fit-content;
+        }
+
+        .panel-title {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 0.75rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        select, input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            outline: none;
+            font-family: var(--font-family);
+            transition: all 0.3s ease;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Custom Switch */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .4s;
+            border-radius: 34px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--text-primary);
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Recording Area */
+        .workspace {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .stream-container {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2rem;
+            backdrop-filter: blur(16px);
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .dual-stream {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            flex-grow: 1;
+        }
+
+        @media (min-width: 992px) {
+            .dual-stream {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .stream-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.5rem;
+        }
+
+        .lang-badge {
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+        }
+
+        .text-feed {
+            flex-grow: 1;
+            overflow-y: auto;
+            max-height: 320px;
+            padding-right: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* Custom Scrollbar */
+        .text-feed::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .text-feed::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .text-feed::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .text-feed::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .bubble {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 1rem 1.25rem;
+            border-radius: 16px;
+            line-height: 1.5;
+            font-size: 1rem;
+            animation: fadeInUp 0.3s ease forwards;
+        }
+
+        .bubble.translation {
+            background: rgba(99, 102, 241, 0.08);
+            border-color: rgba(99, 102, 241, 0.12);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .placeholder-text {
+            color: rgba(148, 163, 184, 0.4);
+            text-align: center;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .placeholder-text i {
+            font-size: 2.5rem;
+            opacity: 0.3;
+        }
+
+        /* Controls Section at bottom */
+        .interpreter-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .record-btn-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .record-btn {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+        }
+
+        .record-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 28px rgba(99, 102, 241, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+        }
+
+        .record-btn:active {
+            transform: scale(0.95);
+        }
+
+        .record-btn.recording {
+            background: var(--danger-color);
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+
+        /* Soundwave animations when recording */
+        .pulse-ring {
+            position: absolute;
+            border: 2px solid var(--accent-primary);
+            border-radius: 50%;
+            height: 72px;
+            width: 72px;
+            opacity: 0;
+            z-index: 1;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .record-btn.recording ~ .ring-1 {
+            animation: ripple 1.6s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+            border-color: var(--danger-color);
+        }
+
+        .record-btn.recording ~ .ring-2 {
+            animation: ripple 1.6s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+            animation-delay: 0.5s;
+            border-color: var(--danger-color);
+        }
+
+        @keyframes ripple {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+
+        /* Performance and Latency Stats */
+        .metrics-bar {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .metric-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .metric-item i {
+            color: var(--accent-primary);
+        }
+
+        footer {
+            padding: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-align: center;
+            width: 100%;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(15, 23, 42, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Utility Class for hidden elements */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>AI Interpreter</span>
+        </div>
+        <div class="status-badge">
+            <div id="statusDot" class="status-dot"></div>
+            <span id="statusText">Disconnected</span>
+        </div>
+    </header>
+
+    <main>
+        <div class="dashboard">
+            <!-- Sidebar controls -->
+            <div class="control-panel">
+                <h3 class="panel-title">Configuration</h3>
+                
+                <div class="form-group">
+                    <label for="translationDirection">Direction</label>
+                    <select id="translationDirection">
+                        <option value="en_to_vi">English ➔ Vietnamese</option>
+                        <option value="vi_to_en">Vietnamese ➔ English</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.4; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.5rem; margin-bottom: 0.5rem;">
+                    <strong>Mode:</strong> Gemini Multimodal Audio (Cloud)<br>
+                    <span style="font-size: 0.72rem; opacity: 0.8;">Streams raw audio chunks via WebSockets directly to Gemini 1.5 Flash for simultaneous transcription and translation.</span>
+                </div>
+
+                <div class="switch-container">
+                    <label for="mockModeSwitch">Simulation Mode</label>
+                    <label class="switch">
+                        <input type="checkbox" id="mockModeSwitch" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: -0.75rem;">
+                    If Simulation Mode is on, mock data is used so API keys are not needed.
+                </div>
+
+                <div id="apiKeyGroup" class="hidden">
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label for="geminiKey">Gemini API Key</label>
+                        <input type="password" id="geminiKey" placeholder="AIzaSy...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workspace containing transcription stream -->
+            <div class="workspace">
+                <div class="stream-container">
+                    <div class="dual-stream">
+                        <!-- Left Column: Source Feed -->
+                        <div class="stream-column">
+                            <div class="column-header">
+                                <span id="sourceLangTitle">Original Text</span>
+                                <span class="lang-badge" id="sourceLangBadge">EN</span>
+                            </div>
+                            <div class="text-feed" id="originalFeed">
+                                <div class="placeholder-text" id="originalPlaceholder">
+                                    <i class="fa-solid fa-microphone-lines"></i>
+                                    <span>Press record to start speaking...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Target Feed (Translation) -->
+                        <div class="stream-column">
+                            <div class="column-header">
+                                <span id="targetLangTitle">Interpretation</span>
+                                <span class="lang-badge" id="targetLangBadge">VI</span>
+                            </div>
+                            <div class="text-feed" id="translatedFeed">
+                                <div class="placeholder-text" id="translatedPlaceholder">
+                                    <i class="fa-solid fa-language"></i>
+                                    <span>Translations will appear here.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Centered Controls -->
+                    <div class="interpreter-controls">
+                        <div class="record-btn-container">
+                            <button id="recordBtn" class="record-btn">
+                                <i class="fa-solid fa-microphone"></i>
+                            </button>
+                            <div class="pulse-ring ring-1"></div>
+                            <div class="pulse-ring ring-2"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Metrics Display -->
+                    <div class="metrics-bar">
+                        <div class="metric-item">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>STT Latency: <strong id="sttLatency">0.00s</strong></span>
+                        </div>
+                        <div class="metric-item">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>Translation Latency: <strong id="transLatency">0.00s</strong></span>
+                        </div>
+                        <div class="metric-item">
+                            <i class="fa-solid fa-stopwatch"></i>
+                            <span>Total delay: <strong id="totalLatency">0.00s</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>OnPoint AI Interpreter POC • Built for AI Innovation Engineer Freshers & Interns</p>
+    </footer>
+
+    <!-- App Logic Script -->
+    <script src="app.js"></script>
+</body>
+</html>

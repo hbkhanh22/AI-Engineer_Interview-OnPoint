@@ -1,0 +1,6 @@
+.vscode
+__pycache__
+huong_dan_cai_dat.md
+venv
+*.pyc
+.env
